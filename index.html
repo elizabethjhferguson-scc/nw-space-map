@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>North West England — Space Industry Capability Map | Space North</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root{
+    --navy:#064A87;
+    --navy-dark:#0B2A46;
+    --red:#E73240;
+    --grey-bg:#F4F6F9;
+    --border:#DCE6F0;
+    --text:#2B3A48;
+    --text-muted:#6B7A88;
+
+    --c-academia:#2E7DD1;
+    --c-research:#7B4FA6;
+    --c-industry:#E73240;
+    --c-adjacent:#E08A1E;
+    --c-space:#1FA97A;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body{ height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--text); }
+  body{ display:flex; flex-direction:column; }
+
+  /* ---------- header ---------- */
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:14px 22px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    border-bottom:4px solid var(--red);
+    z-index:1000;
+  }
+  header .titles{ display:flex; flex-direction:column; }
+  header .eyebrow{ font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9EC0E4; font-weight:600; }
+  header h1{ font-size:19px; font-weight:700; margin-top:2px; }
+  header .wordmark{ text-align:right; font-size:13px; line-height:1.3; color:#C7D8EA; }
+  header .wordmark b{ color:#fff; }
+
+  /* ---------- layout ---------- */
+  .app{ flex:1; display:flex; min-height:0; }
+  #sidebar{
+    width:340px;
+    min-width:340px;
+    background:#fff;
+    border-right:1px solid var(--border);
+    overflow-y:auto;
+    padding:18px 18px 40px 18px;
+  }
+  #map{ flex:1; min-width:0; background:#e9edf1; }
+
+  .intro{ font-size:13px; color:var(--text-muted); line-height:1.55; margin-bottom:18px; }
+  .intro b{ color:var(--navy); }
+
+  .search-box{
+    width:100%;
+    padding:9px 12px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:13px;
+    margin-bottom:18px;
+    outline:none;
+  }
+  .search-box:focus{ border-color:var(--navy); }
+
+  .panel-title{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--red);
+    margin-bottom:10px;
+    margin-top:22px;
+  }
+  .panel-title:first-of-type{ margin-top:0; }
+
+  /* layer toggles */
+  .layer-row{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:6px 0;
+    font-size:13.5px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .layer-row input{ accent-color:var(--navy); width:15px; height:15px; cursor:pointer; }
+  .swatch{ width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+  .layer-count{ margin-left:auto; color:var(--text-muted); font-size:11.5px; }
+
+  /* region isolate buttons */
+  .region-grid{ display:flex; flex-wrap:wrap; gap:6px; }
+  .region-btn{
+    border:1px solid var(--border);
+    background:#F7F9FC;
+    color:var(--text);
+    font-size:12px;
+    padding:7px 10px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .region-btn:hover{ border-color:var(--navy); }
+  .region-btn.active{ background:var(--navy); color:#fff; border-color:var(--navy); }
+  .region-btn.reset{ background:var(--red); color:#fff; border-color:var(--red); }
+
+  /* detail panel */
+  #detail{
+    margin-top:22px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:#F7F9FC;
+    padding:14px;
+    font-size:13px;
+    min-height:70px;
+  }
+  #detail .placeholder{ color:var(--text-muted); font-style:italic; }
+  #detail .d-cat{
+    display:inline-block;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:#fff;
+    padding:3px 8px;
+    border-radius:12px;
+    margin-bottom:8px;
+  }
+  #detail h3{ font-size:16px; color:var(--navy-dark); margin-bottom:2px; }
+  #detail .d-region{ font-size:11.5px; color:var(--text-muted); margin-bottom:10px; }
+  #detail .d-desc{ line-height:1.5; margin-bottom:10px; }
+  #detail .tags{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+  #detail .tag{
+    background:#fff;
+    border:1px solid var(--border);
+    color:var(--navy-dark);
+    font-size:11px;
+    padding:3px 8px;
+    border-radius:6px;
+  }
+  #detail .tie-in{
+    background:#fff;
+    border-left:3px solid var(--red);
+    padding:9px 10px;
+    font-size:12.5px;
+    line-height:1.5;
+    color:var(--text);
+  }
+  #detail .tie-in b{ color:var(--red); }
+  #detail .approx{ font-size:11px; color:var(--text-muted); margin-top:8px; font-style:italic; }
+
+  footer.credits{
+    font-size:10.5px;
+    color:var(--text-muted);
+    line-height:1.5;
+    margin-top:26px;
+    border-top:1px solid var(--border);
+    padding-top:12px;
+  }
+
+  /* leaflet popup tweaks */
+  .leaflet-popup-content{ font-size:13px; }
+  .leaflet-popup-content b{ color:var(--navy); }
+
+  @media (max-width: 760px){
+    .app{ flex-direction:column; }
+    #sidebar{ width:100%; min-width:0; max-height:46vh; }
+    #map{ min-height:54vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="titles">
+    <div class="eyebrow">Space North &middot; North West England</div>
+    <h1>Space Industry Capability Map</h1>
+  </div>
+  <div class="wordmark"><b>SPACE NORTH</b><br/>Space Hub Yorkshire &middot; SNEE &middot; North West Space Cluster</div>
+</header>
+
+<div class="app">
+  <div id="sidebar">
+    <p class="intro">
+      Space North is built bottom-up: <b>academia</b>, <b>research</b>, <b>industry</b>, <b>industry-adjacent</b>
+      organisations and <b>space companies</b> in each region, connecting up first within the North West, then
+      across the three Space North clusters. Use the layers and region controls below to explore what's already here.
+    </p>
+
+    <input type="text" id="search" class="search-box" placeholder="Search by name or capability&hellip;" />
+
+    <div class="panel-title">Layers</div>
+    <div id="layer-list"></div>
+
+    <div class="panel-title">Isolate a region</div>
+    <div class="region-grid" id="region-list"></div>
+
+    <div class="panel-title">Selected site</div>
+    <div id="detail"><span class="placeholder">Click a pin on the map to see its details here.</span></div>
+
+    <footer class="credits">
+      Base map &copy; OpenStreetMap contributors. Region boundaries: ONS Open Geography Portal
+      (Local Authority Districts, Dec 2023, UK BUC) &mdash; used under the Open Government Licence.
+      Site data compiled from Space North / Space Hub Yorkshire public material; locations marked
+      <em>approx.</em> are indicative and not verified against an official address.
+    </footer>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* =========================================================================
+   DATA — edit this array to add / change sites. Each entry:
+   id, name, category, regionGroup, lat, lng, capabilities[], description,
+   tieIn, approx (bool, true if the coordinate is indicative only)
+   ========================================================================= */
+const CATEGORIES = {
+  academia:  { label: "Academia",          color: "#2E7DD1" },
+  research:  { label: "Research",          color: "#7B4FA6" },
+  industry:  { label: "Industry",          color: "#E73240" },
+  adjacent:  { label: "Industry-adjacent", color: "#E08A1E" },
+  space:     { label: "Space companies",   color: "#1FA97A" }
+};
+
+const REGION_GROUPS = ["Cumbria", "Lancashire", "Cheshire", "Greater Manchester", "Merseyside"];
+
+const SITES = [
+  {
+    id: "daresbury",
+    name: "Sci-Tech Daresbury & ESA Business Incubation Centre UK",
+    category: "research",
+    regionGroup: "Cheshire",
+    lat: 53.3446, lng: -2.6372,
+    capabilities: ["STFC National Laboratory", "ESA Business Incubation (1 of 4 UK sites)", "Hartree Supercomputing Centre", "Accelerator Science (ASTeC)"],
+    description: "National-lab campus with 100+ resident tech companies. Hosts one of only four UK ESA Business Incubation Centres, offering £40k+ funding, office space and business support.",
+    tieIn: "The natural anchor site for a resourced North West Space Cluster hub — infrastructure and ESA funding routes already in place.",
+    approx: false
+  },
+  {
+    id: "jodrell-bank",
+    name: "Jodrell Bank Observatory (University of Manchester)",
+    category: "research",
+    regionGroup: "Cheshire",
+    lat: 53.2367, lng: -2.3075,
+    capabilities: ["Radio Astronomy", "UNESCO World Heritage Site", "Public Engagement"],
+    description: "World-leading radio astronomy facility and UNESCO World Heritage Site, operated by the University of Manchester.",
+    tieIn: "Flagship public-engagement and schools-outreach venue — a natural fit for SHY's Space Skills for Schools model.",
+    approx: false
+  },
+  {
+    id: "bae-warton",
+    name: "BAE Systems — Warton",
+    category: "industry",
+    regionGroup: "Lancashire",
+    lat: 53.7466, lng: -2.8827,
+    capabilities: ["Defence Manufacturing", "Combat Aircraft & UAVs", "Advanced Engineering"],
+    description: "Major aerospace and defence manufacturing site — combat aircraft, unmanned systems and advanced engineering.",
+    tieIn: "Deep industrial base for a North West Aerospace Alliance co-hosted event and a supply-chain diversification story into space.",
+    approx: false
+  },
+  {
+    id: "bae-samlesbury",
+    name: "BAE Systems — Samlesbury",
+    category: "industry",
+    regionGroup: "Lancashire",
+    lat: 53.7853, lng: -2.6191,
+    capabilities: ["Advanced Manufacturing", "Composites", "Defence Supply Chain"],
+    description: "Advanced manufacturing and composites site, part of BAE's Lancashire aerospace cluster.",
+    tieIn: "Same industrial base as Warton — a target for supply-chain diversification into space manufacturing.",
+    approx: false
+  },
+  {
+    id: "uclan",
+    name: "UCLan — Institute of Aerospace Technology",
+    category: "academia",
+    regionGroup: "Lancashire",
+    lat: 53.7632, lng: -2.7031,
+    capabilities: ["Aerospace Technology Research", "Skills & Training Pipeline"],
+    description: "Dedicated aerospace technology institute within a major regional university.",
+    tieIn: "Direct graduate / early-careers pipeline — a natural partner for a North West careers showcase.",
+    approx: false
+  },
+  {
+    id: "lancaster-uni",
+    name: "Lancaster University",
+    category: "academia",
+    regionGroup: "Lancashire",
+    lat: 54.0122, lng: -2.7813,
+    capabilities: ["Space & Planetary Physics Research"],
+    description: "Active space and planetary physics research group.",
+    tieIn: "Extends the university roadshow north, alongside Manchester, LJMU and UCLan.",
+    approx: false
+  },
+  {
+    id: "manchester-uni",
+    name: "University of Manchester (incl. National Graphene Institute)",
+    category: "academia",
+    regionGroup: "Greater Manchester",
+    lat: 53.4668, lng: -2.2339,
+    capabilities: ["Advanced Materials (Graphene)", "Data & Digital Science", "High Footfall / Events Hub"],
+    description: "Major research university; National Graphene Institute plus a wide digital and data-science base. Highest-footfall city in the region for events.",
+    tieIn: "Best-positioned site for a flagship investment-network or launch event.",
+    approx: false
+  },
+  {
+    id: "ljmu",
+    name: "Liverpool John Moores University — Astrophysics Research Institute",
+    category: "academia",
+    regionGroup: "Merseyside",
+    lat: 53.4084, lng: -2.9716,
+    capabilities: ["Astrophysics Research"],
+    description: "Dedicated astrophysics research institute based in Liverpool.",
+    tieIn: "A second city-region anchor for events, distinct from Daresbury and Manchester.",
+    approx: false
+  },
+  {
+    id: "sellafield",
+    name: "Sellafield / National Nuclear Laboratory",
+    category: "adjacent",
+    regionGroup: "Cumbria",
+    lat: 54.4155, lng: -3.4986,
+    capabilities: ["Nuclear R&D", "Radiation-Hardened Technology (speculative space-power link)"],
+    description: "The UK's principal nuclear R&D and fuel-cycle site.",
+    tieIn: "Longer-term, speculative link to STFC's nuclear physics work at Daresbury — radiation-hardened electronics and deep-space power systems. A future angle, not a current programme.",
+    approx: false
+  },
+  {
+    id: "nwaa",
+    name: "North West Aerospace Alliance",
+    category: "adjacent",
+    regionGroup: "Lancashire",
+    lat: 53.79, lng: -2.62,
+    capabilities: ["Industry Convening", "Supply-Chain Network"],
+    description: "Existing regional industry body convening aerospace and advanced-manufacturing companies across the North West.",
+    tieIn: "Ready-made co-host for Space North events — an instant audience and shared cost, rather than building a network from scratch.",
+    approx: true
+  },
+  {
+    id: "spacespecialists",
+    name: "SpaceSpecialists Ltd",
+    category: "space",
+    regionGroup: "Cheshire",
+    lat: 53.343, lng: -2.635,
+    capabilities: ["Space-Sector Recruitment & Consultancy"],
+    description: "Global space-industry recruitment, training and consultancy firm based at Sci-Tech Daresbury.",
+    tieIn: "Directly relevant to graduate / early-careers pipeline work — a potential partner, not just a subject.",
+    approx: false
+  },
+  {
+    id: "smartir",
+    name: "Smart IR",
+    category: "space",
+    regionGroup: "Greater Manchester",
+    lat: 53.469, lng: -2.235,
+    capabilities: ["Graphene / Advanced Infrared Materials"],
+    description: "Graphene-based infrared technology company associated with Manchester's advanced-materials cluster.",
+    tieIn: "An example of a NW-grown space-adjacent materials company — worth confirming exact site and current activity directly.",
+    approx: true
+  }
+];
+
+/* NW local authority districts, grouped for region isolation.
+   Names must match ONS LAD (Dec 2023) name field values. */
+const LAD_TO_GROUP = {
+  "cumberland": "Cumbria", "westmorland and furness": "Cumbria",
+  "lancaster": "Lancashire", "preston": "Lancashire", "south ribble": "Lancashire",
+  "chorley": "Lancashire", "west lancashire": "Lancashire", "fylde": "Lancashire",
+  "wyre": "Lancashire", "ribble valley": "Lancashire", "pendle": "Lancashire",
+  "burnley": "Lancashire", "hyndburn": "Lancashire", "rossendale": "Lancashire",
+  "blackpool": "Lancashire", "blackburn with darwen": "Lancashire",
+  "cheshire east": "Cheshire", "cheshire west and chester": "Cheshire",
+  "warrington": "Cheshire", "halton": "Cheshire",
+  "manchester": "Greater Manchester", "salford": "Greater Manchester",
+  "trafford": "Greater Manchester", "stockport": "Greater Manchester",
+  "tameside": "Greater Manchester", "oldham": "Greater Manchester",
+  "rochdale": "Greater Manchester", "bury": "Greater Manchester",
+  "bolton": "Greater Manchester", "wigan": "Greater Manchester",
+  "liverpool": "Merseyside", "wirral": "Merseyside", "sefton": "Merseyside",
+  "knowsley": "Merseyside", "st helens": "Merseyside", "st. helens": "Merseyside"
+};
+
+const REGION_FILL = {
+  "Cumbria": "#CBD9E8",
+  "Lancashire": "#F3DEC2",
+  "Cheshire": "#D8ECD9",
+  "Greater Manchester": "#E4D9F0",
+  "Merseyside": "#F5D9E0"
+};
+
+const BOUNDARY_URL = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/" +
+  "Local_Authority_Districts_December_2023_Boundaries_UK_BUC/FeatureServer/0/query" +
+  "?where=1%3D1&outFields=*&outSR=4326&f=geojson";
+
+/* =========================================================================
+   MAP SETUP
+   ========================================================================= */
+const NW_BOUNDS = L.latLngBounds([53.15, -3.55], [54.75, -2.10]);
+
+const map = L.map("map", { zoomControl: true, minZoom: 6 });
+map.fitBounds(NW_BOUNDS);
+
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  maxZoom: 19
+}).addTo(map);
+
+let boundaryLayer = null; // set once fetched
+
+/* category layer groups */
+const catLayers = {};
+Object.keys(CATEGORIES).forEach(k => { catLayers[k] = L.layerGroup().addTo(map); });
+
+/* build markers */
+const markerIndex = {}; // id -> {marker, site}
+SITES.forEach(site => {
+  const cat = CATEGORIES[site.category];
+  const marker = L.circleMarker([site.lat, site.lng], {
+    radius: 9,
+    weight: 2,
+    color: "#ffffff",
+    fillColor: cat.color,
+    fillOpacity: 0.95,
+    className: "site-marker"
+  });
+  marker.bindTooltip(site.name, { direction: "top", offset: [0, -6] });
+  marker.bindPopup(`<b>${site.name}</b><br/>${cat.label}${site.approx ? " &middot; approx. location" : ""}`);
+  marker.on("click", () => showDetail(site));
+  marker.addTo(catLayers[site.category]);
+  markerIndex[site.id] = { marker, site };
+});
+
+/* =========================================================================
+   SIDEBAR — layer toggles
+   ========================================================================= */
+const layerList = document.getElementById("layer-list");
+Object.entries(CATEGORIES).forEach(([key, cfg]) => {
+  const count = SITES.filter(s => s.category === key).length;
+  const row = document.createElement("label");
+  row.className = "layer-row";
+  row.innerHTML = `
+    <input type="checkbox" checked data-cat="${key}" />
+    <span class="swatch" style="background:${cfg.color}"></span>
+    <span>${cfg.label}</span>
+    <span class="layer-count">${count}</span>
+  `;
+  row.querySelector("input").addEventListener("change", (e) => {
+    if (e.target.checked) map.addLayer(catLayers[key]);
+    else map.removeLayer(catLayers[key]);
+  });
+  layerList.appendChild(row);
+});
+
+/* =========================================================================
+   SIDEBAR — region isolate controls
+   ========================================================================= */
+const regionList = document.getElementById("region-list");
+let activeRegion = null;
+
+function regionButtons(){
+  regionList.innerHTML = "";
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "region-btn reset";
+  resetBtn.textContent = "Show all";
+  resetBtn.addEventListener("click", () => isolateRegion(null));
+  regionList.appendChild(resetBtn);
+
+  REGION_GROUPS.forEach(name => {
+    const btn = document.createElement("button");
+    btn.className = "region-btn";
+    btn.dataset.region = name;
+    btn.textContent = name;
+    btn.addEventListener("click", () => isolateRegion(name));
+    regionList.appendChild(btn);
+  });
+}
+regionButtons();
+
+function isolateRegion(regionName){
+  activeRegion = regionName;
+
+  // button styling
+  regionList.querySelectorAll(".region-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.region === regionName);
+  });
+
+  // markers: fade those outside the region
+  Object.values(markerIndex).forEach(({marker, site}) => {
+    const inRegion = !regionName || site.regionGroup === regionName;
+    marker.setStyle({ fillOpacity: inRegion ? 0.95 : 0.12, opacity: inRegion ? 1 : 0.25 });
+  });
+
+  // boundary polygons: fade those outside the region
+  if (boundaryLayer){
+    boundaryLayer.eachLayer(l => {
+      const inRegion = !regionName || l.feature.properties.__group === regionName;
+      l.setStyle({ fillOpacity: inRegion ? 0.55 : 0.06, opacity: inRegion ? 0.9 : 0.15 });
+    });
+  }
+
+  // zoom
+  if (regionName){
+    const pts = SITES.filter(s => s.regionGroup === regionName).map(s => [s.lat, s.lng]);
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 11 });
+  } else {
+    map.fitBounds(NW_BOUNDS);
+  }
+}
+
+/* =========================================================================
+   DETAIL PANEL
+   ========================================================================= */
+function showDetail(site){
+  const cat = CATEGORIES[site.category];
+  const el = document.getElementById("detail");
+  el.innerHTML = `
+    <span class="d-cat" style="background:${cat.color}">${cat.label}</span>
+    <h3>${site.name}</h3>
+    <div class="d-region">${site.regionGroup}${site.approx ? " &middot; location approximate" : ""}</div>
+    <div class="d-desc">${site.description}</div>
+    <div class="tags">${site.capabilities.map(c => `<span class="tag">${c}</span>`).join("")}</div>
+    <div class="tie-in"><b>Space North / SHY opportunity:</b> ${site.tieIn}</div>
+    ${site.approx ? '<div class="approx">Marker position is indicative — not verified against an official address.</div>' : ""}
+  `;
+}
+
+/* =========================================================================
+   SEARCH
+   ========================================================================= */
+document.getElementById("search").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  Object.values(markerIndex).forEach(({marker, site}) => {
+    const haystack = (site.name + " " + site.capabilities.join(" ") + " " + site.regionGroup).toLowerCase();
+    const match = !q || haystack.includes(q);
+    const layerHasMarker = catLayers[site.category].hasLayer(marker);
+    if (match && !layerHasMarker && document.querySelector(`input[data-cat="${site.category}"]`).checked){
+      marker.addTo(catLayers[site.category]);
+    }
+    marker.setStyle({ opacity: match ? 1 : 0.08, fillOpacity: match ? 0.95 : 0.03 });
+  });
+});
+
+/* =========================================================================
+   BOUNDARY OVERLAY — fetched at runtime, filtered to NW England.
+   Degrades gracefully: if this fails, the map still works fine without it.
+   ========================================================================= */
+fetch(BOUNDARY_URL)
+  .then(r => r.json())
+  .then(geojson => {
+    const features = geojson.features.filter(f => {
+      const props = f.properties || {};
+      const matchKey = Object.values(props).find(v =>
+        typeof v === "string" && LAD_TO_GROUP[v.trim().toLowerCase()]
+      );
+      if (!matchKey) return false;
+      f.properties.__group = LAD_TO_GROUP[matchKey.trim().toLowerCase()];
+      return true;
+    });
+    if (!features.length) return;
+
+    boundaryLayer = L.geoJSON({ type: "FeatureCollection", features }, {
+      style: (f) => ({
+        color: "#8AA3B8",
+        weight: 1,
+        fillColor: REGION_FILL[f.properties.__group] || "#eee",
+        fillOpacity: 0.45
+      }),
+      onEachFeature: (f, layer) => {
+        layer.bindTooltip(f.properties.__group, { sticky: true });
+        layer.on("click", () => isolateRegion(f.properties.__group));
+      }
+    });
+    boundaryLayer.addTo(map);
+    boundaryLayer.bringToBack();
+  })
+  .catch(err => {
+    console.warn("Region boundary overlay unavailable — map still fully functional without it.", err);
+  });
+</script>
+</body>
+</html>
