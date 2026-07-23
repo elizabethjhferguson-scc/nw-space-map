@@ -2,7 +2,7 @@
 
 A single-file interactive map (Leaflet.js) of space-relevant businesses, academic & research
 institutions, infrastructure/facilities and grassroots/public-engagement groups across North
-West England, themed for the **North West Space Cluster** (STFC / Sci-Tech Daresbury).
+West England, themed for Space North.
 
 ## What it does
 
@@ -24,23 +24,8 @@ West England, themed for the **North West Space Cluster** (STFC / Sci-Tech Dares
   fetch fails (offline, API change), the map still works fully — pins and the base map don't
   depend on it.
 
-## Deploying to GitHub Pages
 
-1. Create a new repo (or use an existing one) and add `index.html` to the root — or to a `/docs`
-   folder if you prefer.
-2. Push to GitHub.
-3. In the repo: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, pick
-   `main` and `/` (root) or `/docs`, save.
-4. Your map is live at `https://<username>.github.io/<repo-name>/` within a minute or two.
 
-No build step, no dependencies to install — it's one HTML file that loads Leaflet from a CDN.
-
-## Editing the data
-
-Everything site-specific lives in the `SITES` array near the top of the `<script>` block in
-`index.html`. Each entry looks like:
-
-```js
 {
   id: "daresbury",
   name: "Sci-Tech Daresbury (incl. ESA BIC UK, Hartree Centre, Space Enterprise Lab)",
